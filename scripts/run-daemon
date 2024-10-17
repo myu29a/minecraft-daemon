@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Find latest JAR
+LATEST_VERSION=$(curl -fsSL "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq -r ".latest.release")
+echo "Latest JAR: ${LATEST_VERSION}"
+
+# Get manifest URL 
+MANIFEST_URL=$(curl -fsS --location "https://launchermeta.mojang.com/mc/game/version_manifest.json" | jq -r ".versions[] | select(.id==\"${LATEST_VERSION}\") | .url")
+echo "Manifest URL: ${MANIFEST_URL}"
+
+# Get server.jar URL
+JAR_URL=$(curl -fsS --location "${MANIFEST_URL}" | jq -r ".downloads.server.url")
+echo "JAR URL: ${JAR_URL}"
+
+# java paths
+export JAVA_HOME="${SNAP}/usr/lib/jvm/java-1.21.0-openjdk-${SNAP_ARCH}"
+export PATH="${JAVA_HOME}/bin:${JAVA_HOME}/jre/bin:${PATH}"
+
+# Move into common directory to allow the world and data to be saved every time
+cd "${SNAP_USER_COMMON}" || eval "$(echo "Failed to change into snap directory: ${SNAP_USER_DATA}" && exit 1)"
+
+echo "Downloading server"
+curl -fsS --output server.jar "${JAR_URL}"
+
+echo "Starting minecraft"
+java -Xmx8192M -Xms128M -XX:+UseG1GC -jar server.jar nogui
